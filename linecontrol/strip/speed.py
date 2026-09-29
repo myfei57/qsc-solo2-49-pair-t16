@@ -17,8 +17,13 @@ class SpeedOps:
         return self.data.speed
 
     def advance(self, delta: float) -> float:
-        self.data.travel += float(delta)
-        self.data.track += float(delta)
+        distance = float(delta)
+        if distance < 0:
+            raise StripError(StripErrorCode.NEGATIVE_TRAVEL, "strip travel must not be negative")
+        self.data.travel += distance
+        self.data.track_mileage += distance
+        self.data.track += distance
+        self._persist()
         return self.data.track
 
     def travel(self) -> float:

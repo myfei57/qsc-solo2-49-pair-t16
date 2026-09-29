@@ -121,21 +121,69 @@ class TrackSnapshot:
     position: float = 0.0
     seam_id: str = ""
     saved: datetime = field(default_factory=utcnow)
+    travel: float = 0.0
+    track_mileage: float | None = None
+    track_correction: float = 0.0
+    track_correction_total: float = 0.0
+    track_corrections: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "position": self.position,
             "seam_id": self.seam_id,
+            "travel": self.travel,
+            "track_mileage": self.mileage(),
+            "track_correction": self.track_correction,
+            "track_correction_total": self.track_correction_total,
+            "track_corrections": self.track_corrections,
             "saved": self.saved.isoformat(),
         }
 
+    def mileage(self) -> float:
+        return self.travel if self.track_mileage is None else self.track_mileage
+
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "TrackSnapshot":
+        travel = float(raw.get("travel", 0.0))
+        mileage = float(raw["track_mileage"]) if "track_mileage" in raw else travel
         return cls(
             position=float(raw.get("position", 0.0)),
             seam_id=str(raw.get("seam_id", "")),
+            travel=travel,
+            track_mileage=mileage,
+            track_correction=float(raw.get("track_correction", 0.0)),
+            track_correction_total=float(raw.get("track_correction_total", 0.0)),
+            track_corrections=int(raw.get("track_corrections") or 0),
             saved=_stamp(raw.get("saved")),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class TrackCorrection:
+    """Result of reconciling a track point against a measured marker."""
+
+    position: float
+    previous_position: float
+    delta: float
+    mileage: float
+    correction_total: float
+    net_correction: float
+    limit: float
+    marker: str = ""
+    at: datetime = field(default_factory=utcnow)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "position": self.position,
+            "previousPosition": self.previous_position,
+            "delta": self.delta,
+            "mileage": self.mileage,
+            "correctionTotal": self.correction_total,
+            "netCorrection": self.net_correction,
+            "limit": self.limit,
+            "marker": self.marker,
+            "at": self.at.isoformat(),
+        }
 
 
 @dataclass(frozen=True, slots=True)

@@ -9,6 +9,9 @@ class StripErrorCode(str, Enum):
     STRIP_RUN = "strip-run"
     TAIL_UNFLUSHED = "tail-unflushed"
     NO_SPEED = "no-speed"
+    NEGATIVE_TRAVEL = "negative-travel"
+    TRACK_STALE = "track-stale"
+    TRACK_CORRECTION_LIMIT = "track-correction-limit"
 
 
 class StripError(RuntimeError):

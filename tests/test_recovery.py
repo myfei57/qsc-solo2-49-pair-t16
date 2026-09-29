@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from linecontrol.domain.records import PumpSnapshot, RinseSnapshot, TensionSnapshot
+from linecontrol.domain.records import (
+    PumpSnapshot,
+    RinseSnapshot,
+    TensionSnapshot,
+    TrackSnapshot,
+)
 from linecontrol.line.machine import Line
 from linecontrol.store.keys import KEY_GAIN, KEY_PUMP, KEY_RINSE, KEY_TENSION
 from linecontrol.store.snapshot import save_float, save_json
@@ -26,7 +31,19 @@ def test_recovery_rebuilds_every_controller(tmp_path: Path) -> None:
     save_json(line.store, KEY_PUMP, PumpSnapshot(running=True))
     save_json(line.store, KEY_RINSE, RinseSnapshot(active=True))
     line.store.save("pump.hours", b"240.0")
-    line.store.save("strip.track", b'{"position": 55.0, "seam_id": "s-1"}')
+    save_json(
+        line.store,
+        "strip.track",
+        TrackSnapshot(
+            position=55.0,
+            seam_id="s-1",
+            travel=20.0,
+            track_mileage=12.0,
+            track_correction=-0.4,
+            track_correction_total=1.2,
+            track_corrections=2,
+        ),
+    )
     line.store.save("pickle.acid", b'{"level": 6.5, "offset": 0.75}')
     line.store.save("weld.latch", b'{"interlock": true, "alarm": true}')
 
@@ -39,6 +56,10 @@ def test_recovery_rebuilds_every_controller(tmp_path: Path) -> None:
     assert recovered.pump.running() is True
     assert recovered.pump.run_seconds() == 240.0
     assert recovered.strip.track_position() == 55.0
+    assert recovered.strip.travel() == 20.0
+    assert recovered.strip.track_mileage() == 12.0
+    assert recovered.strip.track_correction_total() == 1.2
+    assert recovered.strip.track_correction_count() == 2
     assert recovered.pickle.level() == 6.5
     assert recovered.pickle.offset() == 0.75
     assert recovered.weld.interlock_ok() is False

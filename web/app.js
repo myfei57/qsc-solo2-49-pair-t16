@@ -59,6 +59,19 @@ function renderState(state) {
   setText("tail", state.strip && state.strip.tailDirty ? "脏" : "净");
   setText("speed", fmt(state.strip ? state.strip.speed : 0, 2));
   setText("travel", fmt(state.strip ? state.strip.travel : 0, 1));
+  setText("trackMileage", fmt(state.strip ? state.strip.trackMileage : 0, 1));
+  setText(
+    "trackCorrection",
+    fmt(state.strip ? state.strip.trackCorrection : 0, 2),
+  );
+  setText(
+    "trackCorrectionTotal",
+    fmt(state.strip ? state.strip.trackCorrectionTotal : 0, 2),
+  );
+  setText(
+    "trackCorrectionLimit",
+    fmt(state.strip ? state.strip.trackCorrectionLimit : 0, 2),
+  );
 
   const lamps = document.getElementById("lamps");
   lamps.innerHTML = "";
@@ -176,6 +189,7 @@ const FORM_CALLS = {
   "dry-dew": (form) => post("/api/dry/dew", readForm(form)),
   "dry-heat-target": (form) => post("/api/dry/heat-target", readForm(form)),
   "strip-advance": (form) => post("/api/strip/advance", readForm(form)),
+  "strip-correct": (form) => post("/api/strip/correct", readForm(form)),
   "strip-speed": (form) => post("/api/strip/speed", readForm(form)),
   "entry-offset": (form) => post("/api/entry/offset", readForm(form)),
   "entry-sample": (form) => post("/api/entry/sample", readForm(form)),

@@ -35,6 +35,10 @@
         <dt>带尾残酸</dt><dd id="tail">脏</dd>
         <dt>带钢速度</dt><dd id="speed">0</dd>
         <dt>累计行程</dt><dd id="travel">0</dd>
+        <dt>对账里程</dt><dd id="trackMileage">0</dd>
+        <dt>净修正量</dt><dd id="trackCorrection">0</dd>
+        <dt>累计修正</dt><dd id="trackCorrectionTotal">0</dd>
+        <dt>允许修正</dt><dd id="trackCorrectionLimit">0</dd>
       </dl>
     </div>
     <div class="panel">
@@ -111,6 +115,11 @@
       <form class="inline" data-form="strip-speed">
         <label>设定速度<input name="speed" type="number" step="0.1" value="1.6"></label>
         <button type="submit">下发速度</button>
+      </form>
+      <form class="inline" data-form="strip-correct">
+        <label>实测标记位置<input name="position" type="number" step="0.1" value="120"></label>
+        <label>标记编号<input name="marker" type="text" value="M-1"></label>
+        <button type="submit">修正跟踪点</button>
       </form>
       <form class="inline" data-form="entry-offset">
         <label>对中偏移<input name="value" type="number" step="0.5" value="3"></label>

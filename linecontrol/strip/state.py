@@ -16,3 +16,7 @@ class StripState:
     tail_dirty: bool = True
     speed: float = 0.0
     travel: float = 0.0
+    track_mileage: float = 0.0
+    track_correction: float = 0.0
+    track_correction_total: float = 0.0
+    track_corrections: int = 0

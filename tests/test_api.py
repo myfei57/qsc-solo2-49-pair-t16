@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from flask.testing import FlaskClient
 
 
@@ -136,6 +137,20 @@ def test_taper_weight_and_eta(client: FlaskClient) -> None:
     client.post("/api/strip/speed?speed=2")
     eta = client.get("/api/strip/eta?target=120").get_json()
     assert eta["eta"] > 0.0
+
+
+def test_strip_marker_correction_is_mileage_gated(client: FlaskClient) -> None:
+    client.post("/api/cycle?coil=C-9&target=90&level=4.5&voltage=24&current=300&speed=1.4")
+    client.post("/api/strip/advance?delta=50")
+    response = client.post("/api/strip/correct?position=170.4&marker=M-1")
+    assert response.status_code == 200
+    correction = response.get_json()["correction"]
+    assert correction["delta"] == pytest.approx(0.4)
+    assert correction["marker"] == "M-1"
+
+    blocked = client.post("/api/strip/correct?position=172.0")
+    assert blocked.status_code == 409
+    assert blocked.get_json()["detail"]["code"] == "track-correction-limit"
 
 
 def test_sequence_clear_endpoint(client: FlaskClient) -> None:

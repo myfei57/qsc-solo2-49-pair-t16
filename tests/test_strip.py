@@ -54,6 +54,113 @@ def test_restore_track_reads_a_snapshot(tmp_path) -> None:
     assert strip.seam_id() == "seam-3"
 
 
+def test_track_correct_moves_to_a_measured_marker(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(120.0, "seam-3")
+    strip.advance(100.0)
+
+    result = strip.track_correct(222.0, "M-7")
+
+    assert result.position == pytest.approx(222.0)
+    assert result.delta == pytest.approx(2.0)
+    assert result.mileage == pytest.approx(100.0)
+    assert result.limit == pytest.approx(2.5)
+    assert result.net_correction == pytest.approx(2.0)
+    assert result.marker == "M-7"
+    assert strip.track_position() == pytest.approx(222.0)
+    assert strip.track_mileage() == pytest.approx(100.0)
+    assert strip.track_correction() == pytest.approx(2.0)
+    assert strip.track_correction_total() == pytest.approx(2.0)
+    assert strip.track_correction_count() == 1
+
+
+def test_track_correct_supports_a_negative_marker_offset(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(120.0, "seam-3")
+    strip.advance(100.0)
+
+    result = strip.track_correct(218.0)
+
+    assert result.delta == pytest.approx(-2.0)
+    assert strip.track_position() == pytest.approx(218.0)
+    assert strip.track_correction() == pytest.approx(-2.0)
+    assert strip.track_correction_total() == pytest.approx(2.0)
+
+
+def test_track_correct_is_rejected_outside_the_mileage_allowance(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(120.0, "seam-3")
+    strip.advance(100.0)
+
+    with pytest.raises(StripError) as caught:
+        strip.track_correct(223.0)
+
+    assert caught.value.code is StripErrorCode.TRACK_CORRECTION_LIMIT
+    assert strip.track_position() == pytest.approx(220.0)
+    assert strip.track_mileage() == pytest.approx(100.0)
+    assert strip.track_correction_count() == 0
+
+
+def test_track_correct_accounts_repeated_markers(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(120.0, "seam-3")
+    strip.advance(100.0)
+    strip.track_correct(222.0)
+    strip.track_correct(222.3)
+
+    with pytest.raises(StripError) as caught:
+        strip.track_correct(222.6)
+
+    assert caught.value.code is StripErrorCode.TRACK_CORRECTION_LIMIT
+    assert strip.track_position() == pytest.approx(222.3)
+    assert strip.track_correction() == pytest.approx(2.3)
+    assert strip.track_correction_total() == pytest.approx(2.3)
+
+
+def test_track_correct_requires_an_active_seam(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_update(120.0)
+    with pytest.raises(StripError) as caught:
+        strip.track_correct(120.4)
+    assert caught.value.code is StripErrorCode.TRACK_STALE
+
+
+def test_negative_advance_does_not_change_the_ledger(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(120.0, "seam-3")
+    with pytest.raises(StripError) as caught:
+        strip.advance(-1.0)
+    assert caught.value.code is StripErrorCode.NEGATIVE_TRAVEL
+    assert strip.track_position() == pytest.approx(120.0)
+    assert strip.travel() == pytest.approx(0.0)
+    assert strip.track_mileage() == pytest.approx(0.0)
+
+
+def test_track_account_rebuilds_after_advance_and_correction(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(120.0, "seam-3")
+    strip.advance(100.0)
+    strip.track_correct(222.0)
+    strip.advance(25.0)
+
+    assert strip.travel() == pytest.approx(125.0)
+    assert strip.track_position() == pytest.approx(247.0)
+    assert strip.track_mileage() == pytest.approx(125.0)
+    assert strip.track_correction_limit() == pytest.approx(3.0)
+
+    restored = TrackSnapshot.from_dict(strip.store.load(KEY_TRACK).decode("utf-8"))
+    assert restored.position == pytest.approx(247.0)
+    assert restored.travel == pytest.approx(125.0)
+    assert restored.mileage() == pytest.approx(125.0)
+
+
+def test_legacy_track_snapshot_defaults_the_account(tmp_path) -> None:
+    snapshot = TrackSnapshot.from_dict({"position": 55.0, "seam_id": "s-1"})
+    assert snapshot.travel == pytest.approx(0.0)
+    assert snapshot.mileage() == pytest.approx(0.0)
+    assert snapshot.track_correction_total == pytest.approx(0.0)
+
+
 def test_speed_validation_and_travel(tmp_path) -> None:
     strip, _, _ = build(tmp_path)
     with pytest.raises(StripError) as caught:
