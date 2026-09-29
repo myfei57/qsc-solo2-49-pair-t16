@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ..domain.events import Event
 from ..domain.kinds import EventKind
-from ..domain.records import TensionSnapshot, WeldRecord
+from ..domain.records import TensionSnapshot, TrackSnapshot, WeldRecord
 from ..pickle.dosing import DosePlan
 from ..pump.errors import PumpError, PumpErrorCode
 from ..tension.state import RampPlan
@@ -86,6 +86,9 @@ class CommandOps:
 
     def advance_strip(self, delta: float) -> float:
         return self.strip.advance(delta)
+
+    def correct_track(self, measured: float) -> TrackSnapshot:
+        return self.strip.track_correct(measured)
 
     def set_shear_offset(self, offset: float) -> None:
         self.exit.set_shear_offset(offset)

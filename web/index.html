@@ -35,6 +35,8 @@
         <dt>带尾残酸</dt><dd id="tail">脏</dd>
         <dt>带钢速度</dt><dd id="speed">0</dd>
         <dt>累计行程</dt><dd id="travel">0</dd>
+        <dt>跟踪累计修正</dt><dd id="trackCorrect">0</dd>
+        <dt>对账余量</dt><dd id="trackAllowance">0</dd>
       </dl>
     </div>
     <div class="panel">
@@ -107,6 +109,10 @@
       <form class="inline" data-form="strip-advance">
         <label>带钢位移<input name="delta" type="number" step="0.5" value="40"></label>
         <button type="submit">推进带钢</button>
+      </form>
+      <form class="inline" data-form="strip-correct">
+        <label>实测标记位置<input name="measured" type="number" step="0.1" value="120"></label>
+        <button type="submit">用实测修正跟踪点</button>
       </form>
       <form class="inline" data-form="strip-speed">
         <label>设定速度<input name="speed" type="number" step="0.1" value="1.6"></label>

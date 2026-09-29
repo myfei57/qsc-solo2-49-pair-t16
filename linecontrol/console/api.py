@@ -277,6 +277,17 @@ class Api:
         track = self.line.advance_strip(float_param(request, "delta"))
         return {"ok": True, "track": track}
 
+    def strip_correct(self, request: Request) -> dict[str, object]:
+        measured = float_param(request, "measured")
+        before = self.line.strip.track_position()
+        snapshot = self.line.correct_track(measured)
+        return {
+            "ok": True,
+            "track": snapshot.position,
+            "delta": snapshot.position - before,
+            "correctionTotal": snapshot.correction_total,
+        }
+
     def strip_speed(self, request: Request) -> dict[str, object]:
         self.line.set_strip_speed(float_param(request, "speed"))
         return {"ok": True, "speed": self.line.strip.speed()}

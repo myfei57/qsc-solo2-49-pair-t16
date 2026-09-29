@@ -61,4 +61,7 @@ class Strip(TrackOps, SpeedOps, StopOps, TailOps, SagOps):
             "speed": self.speed(),
             "travel": self.travel(),
             "sag": self.sag_check(),
+            "correctionTotal": self.correction_total(),
+            "correctionBand": self.correction_band(),
+            "correctionAllowance": self.correction_allowance(),
         }

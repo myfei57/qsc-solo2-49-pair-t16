@@ -120,12 +120,14 @@ class PumpSnapshot:
 class TrackSnapshot:
     position: float = 0.0
     seam_id: str = ""
+    correction_total: float = 0.0
     saved: datetime = field(default_factory=utcnow)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "position": self.position,
             "seam_id": self.seam_id,
+            "correction_total": self.correction_total,
             "saved": self.saved.isoformat(),
         }
 
@@ -134,6 +136,7 @@ class TrackSnapshot:
         return cls(
             position=float(raw.get("position", 0.0)),
             seam_id=str(raw.get("seam_id", "")),
+            correction_total=float(raw.get("correction_total", 0.0)),
             saved=_stamp(raw.get("saved")),
         )
 

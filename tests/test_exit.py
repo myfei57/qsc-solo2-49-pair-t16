@@ -63,6 +63,15 @@ def test_shear_requires_a_fresh_track(tmp_path) -> None:
     assert section.last_shear() == pytest.approx(122.5)
 
 
+def test_shear_follows_a_corrected_track_point(tmp_path) -> None:
+    section = build(tmp_path)
+    with_track(section, position=100.0)
+    section.set_shear_offset(2.5)
+    assert section.shear() == pytest.approx(102.5)
+    section.strip.track_correct(97.8)
+    assert section.shear() == pytest.approx(100.3)
+
+
 def test_coil_change_runs_rinse_roll_shear_in_order(tmp_path) -> None:
     section = build(tmp_path)
     section.tank.rinse()

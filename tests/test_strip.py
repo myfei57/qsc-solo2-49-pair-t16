@@ -8,6 +8,7 @@ from linecontrol.bus import EventBus
 from linecontrol.domain.records import TrackSnapshot
 from linecontrol.store.filestore import FileStore
 from linecontrol.store.keys import KEY_TRACK
+from linecontrol.store.snapshot import load_json
 from linecontrol.strip.errors import StripError, StripErrorCode
 from linecontrol.strip.strip import Strip
 
@@ -105,3 +106,82 @@ def test_snapshot_view(tmp_path) -> None:
     assert view["track"] == pytest.approx(20.0)
     assert view["seam"] == "seam-1"
     assert view["tailDirty"] is True
+
+
+def test_correction_requires_a_tracked_seam(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    with pytest.raises(StripError) as caught:
+        strip.track_correct(50.0)
+    assert caught.value.code is StripErrorCode.TRACK_STALE
+    assert strip.track_position() == pytest.approx(0.0)
+
+
+def test_correction_snaps_to_a_measured_marker(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(100.0, "seam-1")
+    snapshot = strip.track_correct(97.0)
+    assert snapshot.position == pytest.approx(97.0)
+    assert strip.track_position() == pytest.approx(97.0)
+    assert strip.correction_total() == pytest.approx(-3.0)
+    # the physical odometer is never rewritten
+    assert strip.travel() == pytest.approx(0.0)
+    assert strip.store.exists(KEY_TRACK)
+
+
+def test_correction_beyond_single_move_is_blocked(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(100.0, "seam-1")
+    with pytest.raises(StripError) as caught:
+        strip.track_correct(106.0)
+    assert caught.value.code is StripErrorCode.TRACK_CORRECTION_LARGE
+    # nothing was touched or written
+    assert strip.track_position() == pytest.approx(100.0)
+    assert strip.correction_total() == pytest.approx(0.0)
+
+
+def test_correction_reconciles_against_the_odometer(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(100.0, "seam-1")
+    # no travel yet: floor budget is 5
+    assert strip.correction_band() == pytest.approx(5.0)
+    strip.track_correct(98.0)   # total -2
+    strip.track_correct(96.0)   # total -4
+    assert strip.correction_allowance() == pytest.approx(1.0)
+    # one more -2 would exceed the floor budget -> blocked, state untouched
+    with pytest.raises(StripError) as caught:
+        strip.track_correct(94.0)
+    assert caught.value.code is StripErrorCode.TRACK_RECONCILE_EXCEEDED
+    assert strip.track_position() == pytest.approx(96.0)
+    assert strip.correction_total() == pytest.approx(-4.0)
+
+
+def test_correction_budget_grows_with_travel(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(0.0, "seam-1")
+    strip.advance(1000.0)
+    # 2% of 1000 = 20
+    assert strip.correction_band() == pytest.approx(20.0)
+    assert strip.correction_allowance() == pytest.approx(20.0)
+
+
+def test_correction_ledger_resets_on_refresh(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(100.0, "seam-1")
+    strip.track_correct(96.0)
+    assert strip.correction_total() == pytest.approx(-4.0)
+    strip.track_refresh(200.0, "seam-2")
+    assert strip.correction_total() == pytest.approx(0.0)
+    assert strip.correction_allowance() == pytest.approx(5.0)
+
+
+def test_correction_persists_and_restores_the_ledger(tmp_path) -> None:
+    strip, _, _ = build(tmp_path)
+    strip.track_refresh(100.0, "seam-1")
+    strip.track_correct(97.0)
+    snapshot, ok = load_json(strip.store, KEY_TRACK, TrackSnapshot)
+    assert ok and snapshot.correction_total == pytest.approx(-3.0)
+    restored, _, _ = build(tmp_path)
+    restored.restore_track(snapshot)
+    assert restored.track_position() == pytest.approx(97.0)
+    assert restored.correction_total() == pytest.approx(-3.0)
+    assert restored.correction_allowance() == pytest.approx(2.0)

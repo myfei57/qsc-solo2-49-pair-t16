@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from flask.testing import FlaskClient
 
 
@@ -136,6 +137,33 @@ def test_taper_weight_and_eta(client: FlaskClient) -> None:
     client.post("/api/strip/speed?speed=2")
     eta = client.get("/api/strip/eta?target=120").get_json()
     assert eta["eta"] > 0.0
+
+
+def test_track_correction_with_a_measured_marker(client: FlaskClient) -> None:
+    client.post("/api/cycle?coil=C-8&target=90&level=4.5&voltage=24&current=300&speed=1.4")
+    state = client.get("/api/state").get_json()["state"]
+    tracked = state["strip"]["track"]
+    measured = tracked - 3.0
+    body = client.post(f"/api/strip/correct?measured={measured}").get_json()
+    assert body["track"] == pytest.approx(measured)
+    assert body["delta"] == pytest.approx(-3.0)
+    assert body["correctionTotal"] == pytest.approx(-3.0)
+
+
+def test_track_correction_outside_band_is_conflict(client: FlaskClient) -> None:
+    client.post("/api/cycle?coil=C-8&target=90&level=4.5&voltage=24&current=300&speed=1.4")
+    tracked = client.get("/api/state").get_json()["state"]["strip"]["track"]
+    response = client.post(f"/api/strip/correct?measured={tracked + 9.0}")
+    assert response.status_code == 409
+    body = response.get_json()
+    assert body["ok"] is False
+    assert body["detail"]["code"] == "track-correction-large"
+
+
+def test_track_correction_without_a_seam_is_conflict(client: FlaskClient) -> None:
+    response = client.post("/api/strip/correct?measured=10")
+    assert response.status_code == 409
+    assert response.get_json()["detail"]["code"] == "track-stale"
 
 
 def test_sequence_clear_endpoint(client: FlaskClient) -> None:
